@@ -1,8 +1,6 @@
 /*
-    Chat data logger
+    Chat Data Logger
     By: Chdata
-
-    Made to have similar options to Chat Logger++, and to suit my preferences for logging.
 */
 
 #pragma semicolon 1
@@ -20,14 +18,15 @@
 #endif
 
 public Plugin:myinfo = {
-    name = "Chat data logger",
+    name = "Chat Data Logger",
     author = "Chdata",
     description = "Logs chat data",
     version = PLUGIN_VERSION,
     url = "http://steamcommunity.com/groups/tf2data"
 };
 
-static String:s_szChatDate[PLATFORM_MAX_PATH];
+static String:s_szChatDate[32];
+static String:s_szChatMonth[32];
 
 static String:s_szChatFile[MAXPLAYERS + 1][PLATFORM_MAX_PATH];  // Index 0 is used for a single file encompassing everyone's logs
 static String:s_szCmdFile[MAXPLAYERS + 1][PLATFORM_MAX_PATH];   // Note: These strings should start out initialized
@@ -54,7 +53,7 @@ public OnPluginStart()
 
     s_hCvar[0] = CreateConVar(
         "cv_chatdata_steam", "3",
-        "0 = PEOPLE CAN TYPE IN FULL CAPS | 1 = Automagically lowercase other letters",
+        "2 = 'STEAM_0:X:Y' | 3 = '[U:1:Z]' | 4 = profiles/'7656119xxxxxxxxxx'",
         FCVAR_NOTIFY,
         true, 2.0, true, 4.0
     );
@@ -73,15 +72,16 @@ public OnPluginStart()
     );
 
     AutoExecConfig(true, "ch.chatdata");
+
+    decl String:szBasePath[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, szBasePath, sizeof(szBasePath), "logs/plyr/");
+    CreateDirectory(szBasePath, 493);
 }
 
 public OnMapStart()
 {
     FormatTime(s_szChatDate, sizeof(s_szChatDate), "%m-%d-%Y", GetTime());
-
-    decl String:szBasePath[PLATFORM_MAX_PATH];
-    BuildPath(Path_SM, szBasePath, sizeof(szBasePath), "logs/plyr/");
-    CreateDirectory(szBasePath, 493);
+    FormatTime(s_szChatDate, sizeof(s_szChatMonth), "%m-%Y", GetTime());
 
     BuildPath(Path_SM, s_szChatFile[0], sizeof(s_szChatFile[]), "logs/chat-%s.log", s_szChatDate);
     BuildPath(Path_SM, s_szCmdFile[0], sizeof(s_szCmdFile[]), "logs/cmd-%s.log", s_szChatDate);
@@ -135,7 +135,7 @@ public OnClientPostAdminCheck(iClient)
     {
         decl FileType:iType;
         decl String:szDirectory[PLATFORM_MAX_PATH];
-        BuildPath(Path_SM, szDirectory, sizeof(szDirectory), "logs/plyr/");
+        BuildPath(Path_SM, szDirectory, sizeof(szDirectory), "logs/plyr");
         new Handle:hDir = OpenDirectory(szDirectory);
         if (hDir != INVALID_HANDLE)
         {
@@ -165,12 +165,12 @@ public OnClientPostAdminCheck(iClient)
 
     if (s_szChatFile[iClient][0] == '\0')
     {
-        BuildPath(Path_SM, s_szChatFile[iClient], sizeof(s_szChatFile[]), "logs/plyr/%s-%N-chat-%s.log", szAuthId, iClient, s_szChatDate);
+        BuildPath(Path_SM, s_szChatFile[iClient], sizeof(s_szChatFile[]), "logs/plyr/%s-%N-chat-%s.log", szAuthId, iClient, s_szChatMonth);
     }
 
     if (s_szCmdFile[iClient][0] == '\0')
     {
-        BuildPath(Path_SM, s_szCmdFile[iClient], sizeof(s_szCmdFile[]), "logs/plyr/%s-%N-cmd-%s.log", szAuthId, iClient, s_szChatDate);
+        BuildPath(Path_SM, s_szCmdFile[iClient], sizeof(s_szCmdFile[]), "logs/plyr/%s-%N-cmd-%s.log", szAuthId, iClient, s_szChatMonth);
     }
 }
 
