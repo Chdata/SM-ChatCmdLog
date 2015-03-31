@@ -81,7 +81,7 @@ public OnPluginStart()
 public OnMapStart()
 {
     FormatTime(s_szChatDate, sizeof(s_szChatDate), "%m-%d-%Y", GetTime());
-    FormatTime(s_szChatDate, sizeof(s_szChatMonth), "%m-%Y", GetTime());
+    FormatTime(s_szChatMonth, sizeof(s_szChatMonth), "%m-%Y", GetTime());
 
     BuildPath(Path_SM, s_szChatFile[0], sizeof(s_szChatFile[]), "logs/chat-%s.log", s_szChatDate);
     BuildPath(Path_SM, s_szCmdFile[0], sizeof(s_szCmdFile[]), "logs/cmd-%s.log", s_szChatDate);
