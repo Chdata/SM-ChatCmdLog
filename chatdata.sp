@@ -25,7 +25,7 @@ public Plugin:myinfo = {
     url = "http://steamcommunity.com/groups/tf2data"
 };
 
-static String:s_szChatDate[32];
+//static String:s_szChatDate[32];
 static String:s_szChatMonth[32];
 
 static String:s_szChatFile[MAXPLAYERS + 1][PLATFORM_MAX_PATH];  // Index 0 is used for a single file encompassing everyone's logs
@@ -60,7 +60,7 @@ public OnPluginStart()
 
     s_hCvar[1] = CreateConVar(
         "cv_chatdata_replacer", "_",
-        "Invalid file name character replacer",
+        "Invalid file name character replacer. [a-zA-Z0-9_-]",
         FCVAR_NOTIFY
     );
 
@@ -71,6 +71,8 @@ public OnPluginStart()
         true, 0.0, true, 1.0
     );
 
+    HookConVarChange(s_hCvar[1], CvarChange);
+
     AutoExecConfig(true, "ch.chatdata");
 
     decl String:szBasePath[PLATFORM_MAX_PATH];
@@ -78,13 +80,28 @@ public OnPluginStart()
     CreateDirectory(szBasePath, 493);
 }
 
+public OnConfigsExecuted()
+{
+    decl String:szReplacer[2];
+    GetConVarString(s_hCvar[1], szReplacer, sizeof(szReplacer));
+    if (!IsCharFileSafe(szReplacer[0]))
+    {
+        SetConVarString(s_hCvar[1], "_");
+    }
+}
+
+public CvarChange(Handle:hCvar, const String:szOldValue[], const String:szNewValue[])
+{
+    OnConfigsExecuted();
+}
+
 public OnMapStart()
 {
-    FormatTime(s_szChatDate, sizeof(s_szChatDate), "%m-%d-%Y", GetTime());
+    //FormatTime(s_szChatDate, sizeof(s_szChatDate), "%m-%d-%Y", GetTime());
     FormatTime(s_szChatMonth, sizeof(s_szChatMonth), "%m-%Y", GetTime());
 
-    BuildPath(Path_SM, s_szChatFile[0], sizeof(s_szChatFile[]), "logs/chat-%s.log", s_szChatDate);
-    BuildPath(Path_SM, s_szCmdFile[0], sizeof(s_szCmdFile[]), "logs/cmd-%s.log", s_szChatDate);
+    BuildPath(Path_SM, s_szChatFile[0], sizeof(s_szChatFile[]), "logs/chat-%s.log", s_szChatMonth);
+    BuildPath(Path_SM, s_szCmdFile[0], sizeof(s_szCmdFile[]), "logs/cmd-%s.log", s_szChatMonth);
 
     static String:szCurrentmap[99];
     GetCurrentMap(szCurrentmap, sizeof(szCurrentmap));
@@ -124,12 +141,13 @@ public OnClientDisconnect(iClient)
 
 public OnClientPostAdminCheck(iClient)
 {
+    if (IsFakeClient(iClient))
+    {
+        return;
+    }
+
     decl String:szAuthId[MAX_STEAMAUTH_LENGTH];
     GetClientAuthId(iClient, AuthIdType:(GetConVarInt(s_hCvar[0])-1), szAuthId, sizeof(szAuthId));
-
-    decl String:szReplacer[2];
-    GetConVarString(s_hCvar[1], szReplacer, sizeof(szReplacer));
-    ReplaceString(szAuthId, sizeof(szAuthId), ":", "_");
 
     if (GetConVarBool(s_hCvar[2]))
     {
@@ -163,14 +181,22 @@ public OnClientPostAdminCheck(iClient)
         }
     }
 
+    decl String:szReplacer[2];
+    GetConVarString(s_hCvar[1], szReplacer, sizeof(szReplacer));
+    //ReplaceString(szAuthId, sizeof(szAuthId), ":", "_");
+
+    FileString(szAuthId, szReplacer[0]);
+
     if (s_szChatFile[iClient][0] == '\0')
     {
         BuildPath(Path_SM, s_szChatFile[iClient], sizeof(s_szChatFile[]), "logs/plyr/%s-%N-chat-%s.log", szAuthId, iClient, s_szChatMonth);
+        FileString(s_szChatFile[iClient], szReplacer[0]);
     }
 
     if (s_szCmdFile[iClient][0] == '\0')
     {
         BuildPath(Path_SM, s_szCmdFile[iClient], sizeof(s_szCmdFile[]), "logs/plyr/%s-%N-cmd-%s.log", szAuthId, iClient, s_szChatMonth);
+        FileString(s_szCmdFile[iClient], szReplacer[0]);
     }
 }
 
@@ -208,4 +234,33 @@ CmdLog(iAuthor, const String:szMsg[], any:...)
 
     LogToFileEx(s_szCmdFile[0], szOutput);
     LogToFileEx(s_szCmdFile[iAuthor], szOutput);
+}
+
+FileString(String:szText[], cReplacer = '_')
+{
+    if (!IsCharFileSafe(cReplacer))
+    {
+        SetFailState("Invalid character '%c' specified for filename.", cReplacer);
+    }
+
+    new iLen = strlen(szText);
+    for (new i = 0; i <= iLen; i++)
+    {
+        if (!IsCharFileSafe(szText[i]))
+        {
+            szText[i] = cReplacer;
+        }
+    }
+}
+
+stock bool:IsCharFileSafe(chr)
+{
+    switch(chr)
+    {
+        case '_', '.', '-', ' ':
+        {
+            return true;
+        }
+    }
+    return IsCharAlpha(chr) || IsCharNumeric(chr);
 }
